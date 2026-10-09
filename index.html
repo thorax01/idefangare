@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idéfångare</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --text: #222222;
+    --muted: #6b6b6b;
+    --line: #dddad2;
+    --accent: #8a4b2a;
+    --accent-text: #ffffff;
+    --chip: #ece7dc;
+    --danger: #a33232;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1a18;
+      --card: #262421;
+      --text: #ece9e3;
+      --muted: #a29d94;
+      --line: #3a3732;
+      --accent: #d08a5c;
+      --accent-text: #1b1a18;
+      --chip: #34312c;
+      --danger: #e07070;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.5rem; margin: 4px 0 16px; }
+  h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  section, details {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  textarea, input, select {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  textarea { min-height: 110px; resize: vertical; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin: 10px 0 4px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 140px; }
+  button {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: var(--chip);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.danger { color: var(--danger); }
+  button.small { padding: 6px 10px; font-size: 0.85rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .note {
+    border-top: 1px solid var(--line);
+    padding: 12px 0;
+  }
+  .note:first-child { border-top: none; }
+  .note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 8px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--muted); }
+  .tag { background: var(--chip); border-radius: 999px; padding: 2px 8px; color: var(--text); }
+  .meta .spacer { flex: 1; }
+  .empty { color: var(--muted); font-style: italic; }
+  summary { cursor: pointer; font-weight: 600; }
+  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+  .count { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Idéfångare</h1>
+
+  <section>
+    <h2 id="formTitle">Ny anteckning</h2>
+    <textarea id="noteText" placeholder="Skriv din idé här …"></textarea>
+    <label for="noteChapter">Kapitel</label>
+    <select id="noteChapter"></select>
+    <label>Karaktärer</label>
+    <div class="chips" id="noteChars"></div>
+    <div class="actions">
+      <button class="primary" id="saveBtn">Spara</button>
+      <button id="cancelBtn" hidden>Avbryt</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Anteckningar</h2>
+    <div class="row">
+      <div>
+        <label for="search">Sök</label>
+        <input id="search" type="search" placeholder="Sök i text …">
+      </div>
+      <div>
+        <label for="filterChapter">Kapitel</label>
+        <select id="filterChapter"></select>
+      </div>
+      <div>
+        <label for="filterChar">Karaktär</label>
+        <select id="filterChar"></select>
+      </div>
+    </div>
+    <p class="count" id="count"></p>
+    <div id="list"></div>
+  </section>
+
+  <details>
+    <summary>Inställningar och export</summary>
+    <label for="setChapters">Antal kapitel</label>
+    <input id="setChapters" type="number" min="1" max="200">
+    <label for="setChars">Karaktärer (separera med komma)</label>
+    <input id="setChars" type="text" placeholder="Anna, Bertil, …">
+    <div class="actions">
+      <button class="primary" id="saveSettingsBtn">Spara inställningar</button>
+    </div>
+
+    <label>Säkerhetskopia</label>
+    <div class="actions">
+      <button id="exportJsonBtn">Exportera JSON</button>
+      <button id="importJsonBtn">Importera JSON</button>
+      <button id="exportTxtBtn">Exportera text (filtrerat)</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+    </div>
+    <p class="hint">Allt sparas bara i den här webbläsaren. Exportera JSON då och då som backup.
+      Import slår ihop med befintliga anteckningar.</p>
+  </details>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var NOTES_KEY = "idefangare.notes";
+  var SETTINGS_KEY = "idefangare.settings";
+
+  // ---------- Lagring ----------
+
+  function load(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function store(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      alert("Kunde inte spara: " + e.message);
+      return false;
+    }
+  }
+
+  var notes = load(NOTES_KEY, []);
+  var settings = load(SETTINGS_KEY, { chapters: 14, characters: [] });
+
+  var editingId = null;
+  var selectedChars = [];
+
+  // ---------- Hjälpfunktioner ----------
+
+  function $(id) { return document.getElementById(id); }
+
+  function newId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function chapterLabel(ch) {
+    return ch ? "Kap " + ch : "Inget kapitel";
+  }
+
+  function fmtDate(ms) {
+    var d = new Date(ms);
+    return d.toLocaleDateString("sv-SE") + " " +
+      d.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function option(value, text) {
+    var o = document.createElement("option");
+    o.value = value;
+    o.textContent = text;
+    return o;
+  }
+
+  function download(filename, content, type) {
+    var blob = new Blob([content], { type: type });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // ---------- Formulär ----------
+
+  function fillChapterSelects() {
+    var noteSel = $("noteChapter");
+    var filterSel = $("filterChapter");
+    var keepNote = noteSel.value;
+    var keepFilter = filterSel.value;
+
+    noteSel.innerHTML = "";
+    noteSel.appendChild(option("", "Inget kapitel"));
+
+    filterSel.innerHTML = "";
+    filterSel.appendChild(option("all", "Alla"));
+    filterSel.appendChild(option("none", "Utan kapitel"));
+
+    for (var i = 1; i <= settings.chapters; i++) {
+      noteSel.appendChild(option(String(i), "Kap " + i));
+      filterSel.appendChild(option(String(i), "Kap " + i));
+    }
+    noteSel.value = keepNote;
+    filterSel.value = keepFilter || "all";
+    if (!filterSel.value) filterSel.value = "all";
+  }
+
+  function fillCharFilter() {
+    var sel = $("filterChar");
+    var keep = sel.value;
+    sel.innerHTML = "";
+    sel.appendChild(option("all", "Alla"));
+    settings.characters.forEach(function (c) { sel.appendChild(option(c, c)); });
+    sel.value = keep || "all";
+    if (!sel.value) sel.value = "all";
+  }
+
+  function renderCharChips() {
+    var box = $("noteChars");
+    box.innerHTML = "";
+    if (settings.characters.length === 0) {
+      var p = document.createElement("span");
+      p.className = "hint";
+      p.textContent = "Lägg till karaktärer under Inställningar.";
+      box.appendChild(p);
+      return;
+    }
+    settings.characters.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (selectedChars.indexOf(c) >= 0 ? " on" : "");
+      b.textContent = c;
+      b.addEventListener("click", function () {
+        var i = selectedChars.indexOf(c);
+        if (i >= 0) selectedChars.splice(i, 1); else selectedChars.push(c);
+        renderCharChips();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function resetForm() {
+    editingId = null;
+    selectedChars = [];
+    $("noteText").value = "";
+    $("noteChapter").value = "";
+    $("formTitle").textContent = "Ny anteckning";
+    $("saveBtn").textContent = "Spara";
+    $("cancelBtn").hidden = true;
+    renderCharChips();
+  }
+
+  function saveNote() {
+    var text = $("noteText").value.trim();
+    if (!text) { $("noteText").focus(); return; }
+    var ch = $("noteChapter").value ? Number($("noteChapter").value) : null;
+    var now = Date.now();
+
+    if (editingId) {
+      var n = notes.find(function (x) { return x.id === editingId; });
+      if (n) {
+        n.text = text;
+        n.chapter = ch;
+        n.characters = selectedChars.slice();
+        n.updated = now;
+      }
+    } else {
+      notes.unshift({
+        id: newId(),
+        text: text,
+        chapter: ch,
+        characters: selectedChars.slice(),
+        created: now,
+        updated: now
+      });
+    }
+    if (store(NOTES_KEY, notes)) {
+      resetForm();
+      renderList();
+    }
+  }
+
+  function startEdit(id) {
+    var n = notes.find(function (x) { return x.id === id; });
+    if (!n) return;
+    editingId = id;
+    selectedChars = n.characters.slice();
+    $("noteText").value = n.text;
+    $("noteChapter").value = n.chapter ? String(n.chapter) : "";
+    $("formTitle").textContent = "Redigera anteckning";
+    $("saveBtn").textContent = "Uppdatera";
+    $("cancelBtn").hidden = false;
+    renderCharChips();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    $("noteText").focus();
+  }
+
+  function deleteNote(id) {
+    if (!confirm("Ta bort anteckningen?")) return;
+    notes = notes.filter(function (x) { return x.id !== id; });
+    store(NOTES_KEY, notes);
+    if (editingId === id) resetForm();
+    renderList();
+  }
+
+  // ---------- Lista och filter ----------
+
+  function filteredNotes() {
+    var q = $("search").value.trim().toLowerCase();
+    var fc = $("filterChapter").value;
+    var fk = $("filterChar").value;
+    return notes.filter(function (n) {
+      if (q && n.text.toLowerCase().indexOf(q) < 0) return false;
+      if (fc === "none" && n.chapter) return false;
+      if (fc !== "all" && fc !== "none" && n.chapter !== Number(fc)) return false;
+      if (fk !== "all" && n.characters.indexOf(fk) < 0) return false;
+      return true;
+    });
+  }
+
+  function renderList() {
+    var list = $("list");
+    var items = filteredNotes();
+    list.innerHTML = "";
+    $("count").textContent = items.length + " av " + notes.length + " anteckningar";
+
+    if (items.length === 0) {
+      var p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = notes.length ? "Inga anteckningar matchar filtret." : "Inga anteckningar ännu.";
+      list.appendChild(p);
+      return;
+    }
+
+    items.forEach(function (n) {
+      var div = document.createElement("div");
+      div.className = "note";
+
+      var t = document.createElement("div");
+      t.className = "note-text";
+      t.textContent = n.text;
+      div.appendChild(t);
+
+      var meta = document.createElement("div");
+      meta.className = "meta";
+
+      var chTag = document.createElement("span");
+      chTag.className = "tag";
+      chTag.textContent = chapterLabel(n.chapter);
+      meta.appendChild(chTag);
+
+      n.characters.forEach(function (c) {
+        var s = document.createElement("span");
+        s.className = "tag";
+        s.textContent = c;
+        meta.appendChild(s);
+      });
+
+      var date = document.createElement("span");
+      date.textContent = fmtDate(n.updated);
+      meta.appendChild(date);
+
+      var spacer = document.createElement("span");
+      spacer.className = "spacer";
+      meta.appendChild(spacer);
+
+      var edit = document.createElement("button");
+      edit.className = "small";
+      edit.textContent = "Redigera";
+      edit.addEventListener("click", function () { startEdit(n.id); });
+      meta.appendChild(edit);
+
+      var del = document.createElement("button");
+      del.className = "small danger";
+      del.textContent = "Ta bort";
+      del.addEventListener("click", function () { deleteNote(n.id); });
+      meta.appendChild(del);
+
+      div.appendChild(meta);
+      list.appendChild(div);
+    });
+  }
+
+  // ---------- Inställningar ----------
+
+  function showSettings() {
+    $("setChapters").value = settings.chapters;
+    $("setChars").value = settings.characters.join(", ");
+  }
+
+  function saveSettings() {
+    var ch = parseInt($("setChapters").value, 10);
+    if (!(ch >= 1 && ch <= 200)) { alert("Ange ett antal kapitel mellan 1 och 200."); return; }
+    var chars = $("setChars").value.split(",")
+      .map(function (s) { return s.trim(); })
+      .filter(function (s, i, arr) { return s && arr.indexOf(s) === i; });
+    settings = { chapters: ch, characters: chars };
+    if (store(SETTINGS_KEY, settings)) {
+      selectedChars = selectedChars.filter(function (c) { return chars.indexOf(c) >= 0; });
+      fillChapterSelects();
+      fillCharFilter();
+      renderCharChips();
+      renderList();
+      alert("Inställningarna är sparade.");
+    }
+  }
+
+  // ---------- Export och import ----------
+
+  function exportJson() {
+    var data = { app: "idefangare", version: 1, exported: new Date().toISOString(),
+                 settings: settings, notes: notes };
+    download("idefangare-" + today() + ".json", JSON.stringify(data, null, 2), "application/json");
+  }
+
+  function exportTxt() {
+    var items = filteredNotes().slice().sort(function (a, b) {
+      return (a.chapter || 9999) - (b.chapter || 9999) || a.created - b.created;
+    });
+    if (items.length === 0) { alert("Inget att exportera."); return; }
+    var out = [];
+    var current;
+    items.forEach(function (n) {
+      var label = chapterLabel(n.chapter);
+      if (label !== current) {
+        if (out.length) out.push("");
+        out.push("=== " + label + " ===");
+        out.push("");
+        current = label;
+      }
+      out.push(n.text);
+      if (n.characters.length) out.push("[" + n.characters.join(", ") + "]");
+      out.push("");
+    });
+    download("idefangare-" + today() + ".txt", out.join("\r\n"), "text/plain;charset=utf-8");
+  }
+
+  function importJson(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!data || !Array.isArray(data.notes)) throw new Error("Filen saknar anteckningar.");
+        var byId = {};
+        notes.forEach(function (n) { byId[n.id] = n; });
+        var added = 0, updated = 0;
+        data.notes.forEach(function (n) {
+          if (!n || !n.id || typeof n.text !== "string") return;
+          var clean = {
+            id: String(n.id),
+            text: n.text,
+            chapter: n.chapter ? Number(n.chapter) : null,
+            characters: Array.isArray(n.characters) ? n.characters.map(String) : [],
+            created: Number(n.created) || Date.now(),
+            updated: Number(n.updated) || Date.now()
+          };
+          var existing = byId[clean.id];
+          if (!existing) { byId[clean.id] = clean; added++; }
+          else if (clean.updated > existing.updated) { byId[clean.id] = clean; updated++; }
+        });
+        notes = Object.keys(byId).map(function (k) { return byId[k]; })
+          .sort(function (a, b) { return b.created - a.created; });
+
+        if (data.settings && Array.isArray(data.settings.characters)) {
+          var merged = settings.characters.slice();
+          data.settings.characters.forEach(function (c) {
+            if (merged.indexOf(c) < 0) merged.push(c);
+          });
+          settings.characters = merged;
+          settings.chapters = Math.max(settings.chapters, Number(data.settings.chapters) || 0);
+          store(SETTINGS_KEY, settings);
+        }
+        store(NOTES_KEY, notes);
+        showSettings();
+        fillChapterSelects();
+        fillCharFilter();
+        renderCharChips();
+        renderList();
+        alert("Import klar: " + added + " nya, " + updated + " uppdaterade.");
+      } catch (e) {
+        alert("Kunde inte importera: " + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- Start ----------
+
+  $("saveBtn").addEventListener("click", saveNote);
+  $("cancelBtn").addEventListener("click", resetForm);
+  $("search").addEventListener("input", renderList);
+  $("filterChapter").addEventListener("change", renderList);
+  $("filterChar").addEventListener("change", renderList);
+  $("saveSettingsBtn").addEventListener("click", saveSettings);
+  $("exportJsonBtn").addEventListener("click", exportJson);
+  $("exportTxtBtn").addEventListener("click", exportTxt);
+  $("importJsonBtn").addEventListener("click", function () { $("importFile").click(); });
+  $("importFile").addEventListener("change", function (e) {
+    if (e.target.files[0]) importJson(e.target.files[0]);
+    e.target.value = "";
+  });
+
+  showSettings();
+  fillChapterSelects();
+  fillCharFilter();
+  renderCharChips();
+  renderList();
+})();
+</script>
+</body>
+</html>
