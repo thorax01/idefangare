@@ -22,10 +22,13 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  if (!e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
     fetch(e.request).then(function (resp) {
-      var copy = resp.clone();
-      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        if (resp.ok) {
+          var copy = resp.clone();
+          caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
       return resp;
     }).catch(function () {
       return caches.match(e.request).then(function (r) { return r || caches.match("./"); });
